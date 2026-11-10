@@ -14,7 +14,7 @@ export default async function (el, ctx) {
         <div style="flex:1;white-space:pre-wrap;${n.done ? 'text-decoration:line-through;color:var(--dim)' : ''}">${n.kind === 'link' ? `<a href="${esc(n.text)}" target="_blank" rel="noopener">${esc(n.text)}</a>` : esc(n.text)}<div class="dim small">${ago(n.at)}</div></div>
         <button class="btn sm ghost" data-del="1">✕</button></div>`).join('') || '<div class="empty">还没有内容</div>'}</div>`;
     el.querySelector('#add').onclick = () => { const t = el.querySelector('#t').value.trim(); if (!t) return; s.notes = [{ kind: el.querySelector('#k').value, text: t, done: false, at: new Date().toISOString() }, ...(s.notes || [])]; save(); };
-    el.querySelector('#delS').onclick = async () => { if (!confirm('删除这个空间？')) return; await api('/api/spaces/' + s.id, { method: 'DELETE' }); await ctx.refreshSpaces(); toast('已删除'); location.hash = '#/office'; };
+    el.querySelector('#delS').onclick = async () => { if (!confirm('删除这个空间？')) return; await api('/api/spaces/' + s.id, { method: 'DELETE' }); await ctx.refreshSpaces(); toast('已删除'); location.hash = '#/home'; };
   }
   el.addEventListener('click', e => { const r = e.target.closest('[data-i]'); if (!r) return; const i = +r.dataset.i; if (e.target.dataset.del) { s.notes.splice(i, 1); save(); } else if (e.target.type === 'checkbox') { s.notes[i].done = e.target.checked; save(); } });
   render();

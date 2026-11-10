@@ -19,57 +19,32 @@ const SPACES = [
   ['bot', 'OpenMausBot', '🤖'],
   ['create', '创建空间', '➕']
 ];
-const ALL = [...TABS.map(t => t[0]), ...SPACES.map(s => s[0]), 'space', 'settings'];
+const ALL = ['home', ...TABS.map(t => t[0]), ...SPACES.map(s => s[0]), 'space', 'settings'];
 
-const drawer = document.getElementById('drawer');
-const scrim = document.getElementById('scrim');
 const view = document.getElementById('view');
-const openDrawer = on => { drawer.classList.toggle('open', on); scrim.classList.toggle('show', on); };
-document.getElementById('btnMenu').onclick = () => openDrawer(true);
-scrim.onclick = () => openDrawer(false);
-document.getElementById('btnAvatar').onclick = () => (location.hash = '#/office');
-document.getElementById('btnSettings').onclick = () => { location.hash = '#/settings'; openDrawer(false); };
-document.getElementById('btnCompose').onclick = () => { location.hash = '#/chat'; openDrawer(false); setTimeout(() => document.querySelector('.composer textarea')?.focus(), 300); };
-const more = document.getElementById('moreMenu');
-document.getElementById('btnMore').onclick = e => { e.stopPropagation(); more.classList.toggle('hidden'); };
-document.addEventListener('click', () => more.classList.add('hidden'));
-more.onclick = e => {
-  const a = e.target.dataset.act;
-  if (a === 'refresh') route();
-  if (a === 'settings') location.hash = '#/settings';
-  if (a === 'about') toast('Muse · 个人 AI 指挥台 · 仅供研究，不构成投资建议', 3500);
-};
+const homeBtn = document.getElementById('btnHome');
 let userSpaces = [];
-function renderNav(filter = '') {
-  const cur = (location.hash.replace(/^#\/?/, '') || 'office').split('/');
-  const f = filter.trim().toLowerCase();
-  const show = name => !f || name.toLowerCase().includes(f);
-  document.getElementById('navTabs').innerHTML = TABS.filter(t => show(t[1])).map(([id, name, ico]) => `<a href="#/${id}" class="${cur[0] === id ? 'active' : ''}"><span class="ico">${ico}</span>${name}</a>`).join('');
-  const sp = [...SPACES.slice(0, -1).map(s => ({ href: '#/' + s[0], id: s[0], name: s[1], ico: s[2] })), ...userSpaces.map(s => ({ href: '#/space/' + s.id, id: 'space/' + s.id, name: s.title, ico: s.icon || '🗂️' })), { href: '#/create', id: 'create', name: '创建空间', ico: '➕' }];
-  document.getElementById('navSpaces').innerHTML = sp.filter(s => show(s.name)).map(s => `<a href="${s.href}" class="${cur.join('/') === s.id || (cur[0] === s.id) ? 'active' : ''}"><span class="ico">${s.ico}</span>${esc(s.name)}</a>`).join('');
-}
-document.getElementById('drawerSearch').oninput = e => renderNav(e.target.value);
-document.getElementById('drawer').addEventListener('click', e => { if (e.target.closest('a')) openDrawer(false); });
-export async function refreshSpaces() { try { userSpaces = await api('/api/spaces'); } catch {} renderNav(); }
+export const NAV = { TABS, SPACES, get userSpaces() { return userSpaces; } };
+export async function refreshSpaces() { try { userSpaces = await api('/api/spaces'); } catch {} }
 
 let cleanup = null, token = 0;
 async function route() {
-  const parts = (location.hash.replace(/^#\/?/, '') || 'office').split('/');
+  const parts = (location.hash.replace(/^#\/?/, '') || 'home').split('/');
   let page = parts[0];
-  if (!ALL.includes(page)) page = 'office';
+  if (!ALL.includes(page)) page = 'home';
+  homeBtn.classList.toggle('hidden', page === 'home');
   const my = ++token;
   if (typeof cleanup === 'function') { try { cleanup(); } catch {} }
   cleanup = null;
   document.body.className = document.documentElement.className = page === 'agents' ? 'light' : page === 'news' ? 'paper' : '';
   view.innerHTML = '';
   window.scrollTo(0, 0);
-  renderNav();
   loading(true);
   try {
     const mod = await import(`./pages/${page}.js`);
     if (my !== token) return;
     const host = document.createElement('div'); view.appendChild(host);
-    const c = await mod.default(host, { params: parts.slice(1), refreshSpaces });
+    const c = await mod.default(host, { params: parts.slice(1), refreshSpaces, nav: NAV });
     if (my !== token) { if (typeof c === 'function') c(); return; }
     cleanup = c;
   } catch (e) {
@@ -80,5 +55,5 @@ async function route() {
   }
 }
 window.addEventListener('hashchange', route);
-refreshSpaces();
+refreshSpaces().then(() => { if ((location.hash.replace(/^#\/?/, '') || 'home').startsWith('home')) route(); });
 route();
